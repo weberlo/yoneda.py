@@ -1,54 +1,85 @@
-SYMBOL_REGISTRY = set()
-def gen_symbol(sym):
-    assert sym not in SYMBOL_REGISTRY, 'symbol already used'
-    SYMBOL_REGISTRY.add(sym)
-    return sym
-
+from util import *
 
 # TODO will this name fuck with python?
 class Object:
-    def __init__(self, obj, cat):
-        self.obj = obj
+    def __init__(self, sym, cat):
+        self.sym = sym
         self.cat = cat
 
     def __str__(self):
-        return f'{self.obj}'
+        return f'{self.sym}'
+
+    def __repr__(self):
+        return str(self)
 
     def __hash__(self):
-        return hash(self.obj)
+        return hash(self.sym)
+
+    def __eq__(self, other):
+        if not isinstance(other, Object):
+            return False
+        return self.cat == other.cat and self.sym == other.sym
 
 
 class Morphism:
-    def __init__(self, src, elt, tgt, is_ident=False):
+    def __init__(self, src, sym, tgt, is_ident=False):
         self.src = src
-        self.elt = gen_symbol(elt)
+        self.sym = gen_symbol(sym)
         self.tgt = tgt
         assert src.cat == tgt.cat, f'mismatched categories for {src} and {tgt}'
+        self.cat = src.cat
         self.is_ident = is_ident
 
     def __rshift__(self, other):
         return self.src.cat.compose(self, other)
 
     def __str__(self):
-        return f'{self.src} --({self.elt})--> {self.tgt}'
+        return f'{self.src} -({self.sym})-> {self.tgt}'
+
+    def __repr__(self):
+        return str(self)
 
     def __hash__(self):
         return hash(str(self))
 
+    def __eq__(self, other):
+        if not isinstance(other, Morphism):
+            return False
+        return self.cat == other.cat and self.src == other.src and self.sym == other.sym and self.tgt == other.tgt and self.is_ident == other.is_ident
+
+
+# Use `CatBuilder`
+class Category:
+    # objs: Set[str]
+    # mors: Dict[(objs, objs), Set[Any]]
+    # comp: Dict[(mors, mors), mors]
+    # ident: Dict[objs, mors]
+
+    def compose(self, f, g):
+        assert f.tgt == g.src, f'source and target don\'t match: ({f}, {g})'
+        return self.comp[(f, g)]
+
+    def find(self, s):
+        # first search objects
+        for X in self.objs:
+            if X.sym == s:
+                return X
+        # then search morphisms
+        for f in self.mors:
+            if f.sym == s:
+                return f
+        assert False, f'no such object or morphism {s}'
+
+    def __str__(self):
+        return f'objs: {self.objs},\nmors: {self.mors}'
+
+    def __repr__(self):
+        return str(self)
+
 
 class CatBuilder:
-    class Category:
-        # objs: Set[str]
-        # mors: Dict[(objs, objs), Set[Any]]
-        # comp: Dict[(mors, mors), mors]
-
-        def compose(self, f, g):
-            assert f.tgt == g.src, f'source and target don\'t match: ({f}, {g})'
-            return self.comp[(f, g)]
-
-
     def __init__(self):
-        self.cat = self.Category()
+        self.cat = Category()
 
     def add_objs(self, objs):
         objs = [Object(gen_symbol(obj), self.cat) for obj in objs]
@@ -59,6 +90,7 @@ class CatBuilder:
         assert hasattr(self.cat, 'objs'), 'must define objects before morphisms'
         self.cat.mors = mors
         hom = {}
+        idents = {}
         for a in self.cat.objs:
             for b in self.cat.objs:
                 if a == b:
@@ -70,9 +102,10 @@ class CatBuilder:
                         if mor.is_ident:
                             assert not has_ident, f'multiple identity morphisms for {a}'
                             has_ident = True
-                            pass
+                            idents[a] = mor
                     assert has_ident, f'no identity morphism for {a}'
         self.cat.hom = hom
+        self.cat.idents = idents
 
     def add_comp(self, comp):
         assert hasattr(self.cat, 'mors'), 'must define morphisms before composition'
@@ -81,25 +114,3 @@ class CatBuilder:
     def finish(self):
         return self.cat
 
-
-Z2 = CatBuilder()
-
-[X] = Z2.add_objs(['X'])
-
-zero = Morphism(X, '0', X, is_ident=True)
-one = Morphism(X, '1', X)
-Z2.add_mors({zero, one})
-
-Z2.add_comp({
-    (zero, zero): zero,
-    (zero, one): one,
-    (one, zero): one,
-    (one, one): zero,
-})
-
-Z2 = Z2.finish()
-
-print(zero >> zero)
-print(zero >> one)
-print(one >> one)
-print(one >> one >> one)
