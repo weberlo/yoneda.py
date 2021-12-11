@@ -20,6 +20,17 @@ class Functor:
                         F_f_g = F_mor(f >> g)
                         assert (F_f >> F_g) == F_f_g, 'composition law violated'
 
+        # If this is a functor into a dynamically constructed category, it would
+        # be good to initialize any of those morphisms before we pick out any
+        # particular ones.  For example, if we have Cayley's functor for group
+        # categories, then we might not recognize (· >> 1) >> (· >> 1) as (· >>
+        # 2) if we haven't initialized that morphism.
+        for obj in C.objs:
+            F_obj(obj)
+        for mor in C.mors:
+            F_mor(mor)
+
+
     def __call__(self, arg):
         if isinstance(arg, Object):
             return self.F_obj(arg)

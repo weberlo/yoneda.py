@@ -6,7 +6,7 @@ def build_cayley_functor(G: Category, SC: SetCat):
     [X] = G.objs
     elts = G.mors
 
-    def F_obj(A: 'Object[Z2]'):
+    def F_obj(A: 'Object[G]'):
         assert A == X
         return SC.find(set(elts))
 

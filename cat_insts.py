@@ -21,6 +21,53 @@ def build_Zn(n: int):
     return Zn
 
 
+def cayley_table_to_comp_dict(order, table):
+    comp_dict = {}
+    for i, a in enumerate(order):
+        for j, b in enumerate(order):
+            # Row `m` and column `n` of the table correspond to `order[m] *
+            # order[n]`, as this is the Cayley table convention.  However,
+            # recall this is in *classical* composition order,but we want the
+            # entry `(a, b)` to correspond to the forward composition `a >> b`,
+            # so we grab `table[j][i]`, rather than `table[i][j]`.
+            comp_dict[(a, b)] = table[j][i]
+    return comp_dict
+
+
+# TODO generalize to Dn
+def build_D3():
+    n = 3
+    D3 = Category()
+
+    [X] = D3.add_objs(['X'])
+
+    # Rotations
+    mors = [Morphism(X, f'r{i}', X) for i in range(n)]
+    # Reflections
+    mors += [Morphism(X, f'f{i}', X) for i in range(n)]
+    # r0 is the identity
+    mors[0].is_ident = True
+
+    [r0, r1, r2, f0, f1, f2] = D3.add_mors(mors)
+
+    comp_dict = cayley_table_to_comp_dict(
+        order=[r0, r1, r2, f0, f1, f2],
+        table=[
+            [r0, r1, r2, f0, f1, f2],  # r0
+            [r1, r2, r0, f1, f2, f0],  # r1
+            [r2, r0, r1, f2, f0, f1],  # r2
+            [f0, f2, f1, r0, r2, r1],  # f0
+            [f1, f0, f2, r1, r0, r2],  # f1
+            [f2, f1, f0, r2, r1, r0],  # f2
+        ]
+    )
+    def comp_rule(f: Morphism, g: Morphism):
+        return comp_dict[(f, g)]
+    D3.add_comp_rule(comp_rule)
+
+    return D3
+
+
 class SetMorSym:
     def __init__(self, fn: 'Fn', s: str, mor: Morphism):
         self.fn = fn
