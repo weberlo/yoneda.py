@@ -1,26 +1,24 @@
 from category import *
 
-def build_Z2():
-    Z2 = Category()
+def build_Zn(n: int):
+    Zn = Category()
 
-    [X] = Z2.add_objs(['X'])
+    [X] = Zn.add_objs(['X'])
 
-    zero = Morphism(X, '0', X, is_ident=True)
-    one = Morphism(X, '1', X)
-    [zero, one] = Z2.add_mors([zero, one])
+    mors = [Morphism(X, str(i), X) for i in range(n)]
+    # 0 is the identity
+    mors[0].is_ident = True
+    mors = Zn.add_mors(mors)
 
-    comp_dict = {
-        (zero, zero): zero,
-        (zero, one): one,
-        (one, zero): one,
-        (one, one): zero,
-    }
+    comp_dict = {}
+    for a in mors:
+        for b in mors:
+            comp_dict[(a, b)] = mors[(int(a.sym) + int(b.sym)) % n]
     def comp_rule(f: Morphism, g: Morphism):
         return comp_dict[(f, g)]
+    Zn.add_comp_rule(comp_rule)
 
-    Z2.add_comp_rule(comp_rule)
-
-    return Z2
+    return Zn
 
 
 class SetMorSym:
