@@ -29,7 +29,3 @@ class Functor:
             assert False, 'unimplemented'
         else:
             assert False, 'unimplemented'
-
-
-# class SetCat:
-#     def __init__(self):

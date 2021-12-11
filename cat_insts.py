@@ -1,5 +1,4 @@
 from category import *
-from functor import *
 
 def build_Z2():
     Z2 = Category()
@@ -76,35 +75,3 @@ class SetCat(Category):
             return res
         else:
             assert False
-
-
-Z2 = build_Z2()
-X = Z2.find('X')
-zero = Z2.find('0')
-one = Z2.find('1')
-
-SC = SetCat()
-
-def F_obj(A: 'Object[Z2]'):
-    assert A == X
-    return SC.find({zero, one})
-
-
-def F_mor(f: 'Morphism[X, X]'):
-    res = SetMorSym(lambda g: g >> f, f'· >> {f.sym}', f)
-    F_src = F_obj(f.src)
-    F_tgt = F_obj(f.tgt)
-    return SC.find_mor(Morphism(F_src, res, F_tgt, is_ident=f.is_ident))
-
-
-CayleyF = Functor(Z2, SC, F_obj, F_mor)
-
-X_Set = CayleyF(X)
-zero_S = CayleyF(zero)
-one_S = CayleyF(one)
-
-print(f'{zero >> one=}')
-print(f'{one >> one=}')
-
-print(f'{(zero_S >> one_S)=}')
-print(f'{(one_S >> one_S)=}')
