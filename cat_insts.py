@@ -68,55 +68,26 @@ def build_D3():
     return D3
 
 
-class SetMorSym:
-    def __init__(self, fn: 'Fn', s: str, mor: Morphism):
-        self.fn = fn
-        self.s = s
-        self.mor = mor
+def build_walking_arrow():
+    Two = Category()
 
-    def __call__(self, arg):
-        return self.fn(arg)
+    [one, two] = Two.add_objs(['1', '2'])
 
-    def __str__(self):
-        return self.s
+    mors = [
+        Morphism(one, 'id_1', one, is_ident=True),
+        Morphism(one, 'f', two),
+        Morphism(two, 'id_2', two, is_ident=True)
+    ]
+    [id_1, f, id_2] = Two.add_mors(mors)
 
-    def __repr__(self):
-        return str(self)
+    comp_dict = {
+        (id_1, id_1): id_1,
+        (id_1, f): f,
+        (f, id_2): f,
+        (id_2, id_2): id_2,
+    }
+    def comp_rule(f: Morphism, g: Morphism):
+        return comp_dict[(f, g)]
+    Two.add_comp_rule(comp_rule)
 
-
-class SetCat(Category):
-    def __init__(self):
-        super().__init__()
-        self.mor_eval_cache = {}
-
-    def add_mors(self, mors: 'List[Morphism]'):
-        res = super().add_mors(mors)
-        return {self.find_mor(mor) for mor in res}
-
-    def find_mor(self, f: Morphism):
-        # Determine whether this is a new morphism by enumerating inputs and checking outputs.
-        # Only frozen sets are hashable.
-        graph = frozenset((elt, f.sym.fn(elt)) for elt in f.src.sym)
-        self.mor_eval_cache.setdefault(graph, []).append(f)
-        res = self.mor_eval_cache[graph][0]
-        # assert f.is_ident == res.is_ident, 'inconsistent identity tags'
-        return res
-
-    def _comp_rule(self, f: Morphism, g: Morphism) -> Morphism:
-        fn = lambda x: g(f(x))
-        sym = SetMorSym(fn, f'({f}) >> ({g})', f)
-        res = Morphism(f.src, sym, f.tgt, is_ident=f.is_ident and g.is_ident)
-        return self.find_mor(res)
-
-    def find(self, s: 'Any'):
-        res = super().find(s)
-        if res is not None:
-            return res
-        if isinstance(s, set):
-            [res] = self.add_objs([frozenset(s)])
-            return res
-        elif isinstance(s, frozenset):
-            [res] = self.add_objs([s])
-            return res
-        else:
-            assert False
+    return Two

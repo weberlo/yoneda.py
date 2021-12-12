@@ -31,7 +31,11 @@ class Morphism:
         assert src.cat == tgt.cat, f'mismatched categories for {src} and {tgt}'
         self.cat = src.cat
         self.is_ident = is_ident
-        print(f'Let {sym}: {src} ⟶ {tgt}.')
+        # Print out binding with type, and add parentheses if there are any
+        # spaces in the symbol name.
+        sym_str = str(sym)
+        sym_str = f'({sym_str})' if ' ' in sym_str else sym_str
+        print(f'Let {sym_str}: {src} ⟶ {tgt}.')
 
     def __rshift__(self, other):
         return self.src.cat.compose(self, other)
@@ -55,6 +59,7 @@ class Morphism:
         return self.cat == other.cat and self.src == other.src and self.sym == other.sym and self.tgt == other.tgt and self.is_ident == other.is_ident
 
 
+# TODO check for when composition rule is violated
 class Category:
     # objs: Set[Object]
     # mors: Set[Morphism]
@@ -68,8 +73,8 @@ class Category:
         self.idents = {}
 
     def add_objs(self, new_objs: 'List[str]'):
-        new_objs = {Object(gen_symbol(obj), self) for obj in new_objs}
-        self.objs = self.objs.union(new_objs)
+        new_objs = [Object(gen_symbol(obj), self) for obj in new_objs]
+        self.objs = self.objs.union(set(new_objs))
         # Return handles to new objects.
         return new_objs
 
@@ -82,10 +87,10 @@ class Category:
         self.mors = self.mors.union(mors)
         for a in self.objs:
             for b in self.objs:
+                a_b_mors = set(filter(lambda m: m.src == a and m.tgt == b, mors))
+                # Append morphisms.
+                self.hom[(a, b)] = self.hom.setdefault((a, b), set()).union(a_b_mors)
                 if a == b:
-                    a_b_mors = list(filter(lambda m: m.src == a and m.tgt == b, mors))
-                    # Append morphisms.
-                    self.hom[(a, b)] = self.hom.setdefault((a, b), []) + a_b_mors
                     # Identity check
                     has_ident = False
                     for mor in a_b_mors:
@@ -103,6 +108,15 @@ class Category:
     def add_comp_rule(self, comp_rule: 'Fn[(Morphism, Morphism), Morphism]'):
         assert not hasattr(self, 'comp_rule'), 'composition rule already defined'
         self._comp_rule = comp_rule
+        # Check associativity of composition rule.
+        for f in self.mors:
+            for g in self.mors:
+                if f.tgt != g.src:
+                    continue
+                for h in self.mors:
+                    if g.tgt != h.src:
+                        continue
+                    assert (f >> g) >> h == f >> (g >> h), f'associativity of composition violated: ({f} >> {g}) >> {h} == {f} >> ({g} >> {h})'
 
     def compose(self, f, g):
         assert f.tgt == g.src, f'source and target don\'t match: ({f}, {g})'
@@ -127,40 +141,62 @@ class Category:
         return str(self)
 
 
-# class CatBuilder:
-#     def __init__(self):
-#         self.cat = Category()
+#########################################################################
+# We need special definitions for Set, since it's an infinite category. #
+#########################################################################
 
-#     def add_objs(self, objs):
-#         objs = [Object(gen_symbol(obj), self.cat) for obj in objs]
-#         self.cat.objs = objs
-#         return objs
+class SetMorSym:
+    def __init__(self, fn: 'Fn', s: str, mor: Morphism):
+        self.fn = fn
+        self.s = s
+        self.mor = mor
 
-#     def add_mors(self, mors):
-#         assert hasattr(self.cat, 'objs'), 'must define objects before morphisms'
-#         self.cat.mors = mors
-#         hom = {}
-#         idents = {}
-#         for a in self.cat.objs:
-#             for b in self.cat.objs:
-#                 if a == b:
-#                     a_b_mors = list(filter(lambda m: m.src == a and m.tgt == b, mors))
-#                     hom[(a, b)] = a_b_mors
-#                     # identity check
-#                     has_ident = False
-#                     for mor in a_b_mors:
-#                         if mor.is_ident:
-#                             assert not has_ident, f'multiple identity morphisms for {a}'
-#                             has_ident = True
-#                             idents[a] = mor
-#                     assert has_ident, f'no identity morphism for {a}'
-#         self.cat.hom = hom
-#         self.cat.idents = idents
+    def __call__(self, arg):
+        return self.fn(arg)
 
-#     def set_comp_rule(self, comp_rule: 'Fn[(Morphism, Morphism), Morphism]'):
-#         assert not hasattr(self.cat, 'comp_rule'), 'composition rule already defined'
-#         self._comp_rule = comp_rule
+    def __str__(self):
+        return self.s
 
-#     def finish(self):
-#         return self.cat
+    def __repr__(self):
+        return str(self)
 
+
+class SetCat(Category):
+    def __init__(self):
+        super().__init__()
+        self.mor_eval_cache = {}
+
+    def add_mors(self, mors: 'List[Morphism]'):
+        res = super().add_mors(mors)
+        return {self.find_mor(mor) for mor in res}
+
+    def find_mor(self, f: Morphism):
+        # TODO Whenever we have a new morphism, check that the composition rule
+        # still obeys laws.
+
+        # Determine whether this is a new morphism by enumerating inputs and checking outputs.
+        # Only frozen sets are hashable.
+        graph = frozenset((elt, f.sym.fn(elt)) for elt in f.src.sym)
+        self.mor_eval_cache.setdefault(graph, []).append(f)
+        res = self.mor_eval_cache[graph][0]
+        # assert f.is_ident == res.is_ident, 'inconsistent identity tags'
+        return res
+
+    def _comp_rule(self, f: Morphism, g: Morphism) -> Morphism:
+        fn = lambda x: g(f(x))
+        sym = SetMorSym(fn, f'({f}) >> ({g})', f)
+        res = Morphism(f.src, sym, f.tgt, is_ident=f.is_ident and g.is_ident)
+        return self.find_mor(res)
+
+    def find(self, s: 'Any'):
+        res = super().find(s)
+        if res is not None:
+            return res
+        if isinstance(s, set):
+            [res] = self.add_objs([frozenset(s)])
+            return res
+        elif isinstance(s, frozenset):
+            [res] = self.add_objs([s])
+            return res
+        else:
+            assert False
