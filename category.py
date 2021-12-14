@@ -6,6 +6,9 @@ class Object:
         self.sym = sym
         self.cat = cat
 
+    def __call__(self, arg):
+        return self.sym(arg)
+
     def __str__(self):
         if isinstance(self.sym, frozenset):
             return f'{set(self.sym)}'
@@ -124,6 +127,7 @@ class Category:
         return self._comp_rule(f, g)
 
     def find(self, s: 'Any'):
+        # TODO maybe check `str(X.sym) == s` and `str(f.sym) == s`
         # First search objects.
         for X in self.objs:
             if X.sym == s:
@@ -146,10 +150,9 @@ class Category:
 #########################################################################
 
 class SetMorSym:
-    def __init__(self, fn: 'Fn', s: str, mor: Morphism):
+    def __init__(self, fn: 'Fn', s: str):
         self.fn = fn
         self.s = s
-        self.mor = mor
 
     def __call__(self, arg):
         return self.fn(arg)
@@ -184,7 +187,7 @@ class SetCat(Category):
 
     def _comp_rule(self, f: Morphism, g: Morphism) -> Morphism:
         fn = lambda x: g(f(x))
-        sym = SetMorSym(fn, f'({f}) >> ({g})', f)
+        sym = SetMorSym(fn, f'({f}) >> ({g})')
         res = Morphism(f.src, sym, f.tgt, is_ident=f.is_ident and g.is_ident)
         return self.find_mor(res)
 

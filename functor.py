@@ -3,6 +3,8 @@ from util import *
 
 class Functor:
     def __init__(self, C: Category, D: Category, F_obj, F_mor):
+        self.src = C
+        self.tgt = D
         self.F_obj = F_obj
         self.F_mor = F_mor
 
@@ -29,7 +31,6 @@ class Functor:
             F_obj(obj)
         for mor in C.mors:
             F_mor(mor)
-
 
     def __call__(self, arg):
         if isinstance(arg, Object):
