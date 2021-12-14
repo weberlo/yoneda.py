@@ -1,7 +1,10 @@
 CHECK_LAWS = False
 
-SYMBOL_REGISTRY = set()
-def gen_symbol(sym):
-    assert sym not in SYMBOL_REGISTRY, f'symbol {sym} already used'
-    SYMBOL_REGISTRY.add(sym)
-    return sym
+SYMBOL_REGISTRY: set[str] = set()
+class Symbol:
+    name: str
+
+    def __init__(self, name: str):
+        assert name not in SYMBOL_REGISTRY, f"symbol '{name} already used"
+        SYMBOL_REGISTRY.add(name)
+        self.name = name

@@ -1,142 +1,149 @@
+from typing import Callable, Generic, TypeVar
+from dataclasses import dataclass
+import itertools
+
 from util import *
 
-# TODO will this name fuck with python?
-class Object:
-    def __init__(self, sym, cat):
-        self.sym = sym
-        self.cat = cat
+O = TypeVar('O')
+M = TypeVar('M')
+K = TypeVar('K')
 
-    def __call__(self, arg):
-        return self.sym(arg)
+@dataclass(init=False)
+class Object(Generic[O]):
+    sym: Symbol
+    data: O
 
-    def __str__(self):
-        if isinstance(self.sym, frozenset):
-            return f'{set(self.sym)}'
-        return f'{self.sym}'
-
-    def __repr__(self):
-        return str(self)
-
-    def __hash__(self):
-        return hash(self.sym)
-
-    def __eq__(self, other):
-        if not isinstance(other, Object):
-            return False
-        return self.cat == other.cat and self.sym == other.sym
+    def __init__(self, name: str, data: O):
+        self.name = Symbol(name)
+        self.data = data
 
 
-class Morphism:
-    def __init__(self, src, sym, tgt, is_ident=False):
+@dataclass(init=False)
+class Morphism(Generic[O, M]):
+    src: O
+    sym: Symbol
+    data: M
+    tgt: O
+    cat: 'Category[O, M]' | None
+
+    def __init__(self, src: O, sym: Symbol, data: M, tgt: O, cat: 'Category[O, M]' | None = None):
         self.src = src
-        self.sym = gen_symbol(sym)
+        self.sym = sym
+        self.data = data
         self.tgt = tgt
-        assert src.cat == tgt.cat, f'mismatched categories for {src} and {tgt}'
-        self.cat = src.cat
-        self.is_ident = is_ident
+        self.cat = cat
         # Print out binding with type, and add parentheses if there are any
         # spaces in the symbol name.
-        sym_str = str(sym)
-        sym_str = f'({sym_str})' if ' ' in sym_str else sym_str
-        print(f'Let {sym_str}: {src} ⟶ {tgt}.')
-
-    def __rshift__(self, other):
-        return self.src.cat.compose(self, other)
-
-    def __call__(self, arg):
-        return self.sym(arg)
+        data_str = str(data)
+        data_str = f'({data_str})' if ' ' in data_str else data_str
+        print(f'Let {data_str}: {src} ⟶ {tgt}.')
 
     def __str__(self):
         # return f'{self.src} -({self.sym})-> {self.tgt}'
-        return f'{self.sym}'
+        return f'{self.data}'
 
     def __repr__(self):
         return str(self)
 
-    def __hash__(self):
-        return hash(str(self))
+    # def __hash__(self):
+    #     return hash(str(self))
 
-    def __eq__(self, other):
-        if not isinstance(other, Morphism):
-            return False
-        return self.cat == other.cat and self.src == other.src and self.sym == other.sym and self.tgt == other.tgt and self.is_ident == other.is_ident
+    # def __eq__(self, other: 'Morphism[O, M]') -> bool:
+    #     return self.src == other.src and self.data == other.data and self.tgt == other.tgt
+
+    def set_cat(self, cat: 'Category[O, M]'):
+        assert self.cat is None, f'category already defined for morphism {self}'
+        self.cat = cat
+
+    def __rshift__(self, other: 'Morphism[O, M]') -> 'Morphism[O, M]':
+        assert self.cat == other.cat, 'mismatched categories in composition'
+        assert self.cat is not None, 'category not set'
+        return self.cat.compose(self, other)
 
 
 # TODO check for when composition rule is violated
-class Category:
-    # objs: Set[Object]
-    # mors: Set[Morphism]
-    # hom: Dict[(Object, Object), Set[Morphism]]
-    # idents: Dict[objs, mors]
+class Category(Generic[O, M]):
+    objs: set[Object[O]]
+    mors: set[Morphism[O, M]]
+    comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]
+    hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]
+    idents: dict[Object[O], Morphism[O, M]]
 
-    def __init__(self):
-        self.objs = set()
-        self.mors = set()
-        self.hom = {}
-        self.idents = {}
+    def __init__(
+            self,
+            objs: set[Object[O]],
+            mors: set[Morphism[O, M]],
+            comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]):
+        self.objs = objs
+        for mor in mors:
+            mor.set_cat(self)
+        self.mors = mors
+        self.comp_rule = comp_rule
+        self.hom = self._gen_hom_set()
+        self.idents = self._find_idents()
+        self._check_comp_rule()
 
-    def add_objs(self, new_objs: 'List[str]'):
-        new_objs = [Object(gen_symbol(obj), self) for obj in new_objs]
-        self.objs = self.objs.union(set(new_objs))
-        # Return handles to new objects.
-        return new_objs
-
-    def add_mors(self, mors: 'List[Morphism]'):
-        # First add any new objects.
-        mor_objs = set(mor.src for mor in mors).union(set(mor.tgt for mor in mors))
-        new_objs = mor_objs - self.objs
-        self.add_objs(new_objs)
-        # Then add new morphisms.
-        self.mors = self.mors.union(mors)
-        for a in self.objs:
-            for b in self.objs:
-                a_b_mors = set(filter(lambda m: m.src == a and m.tgt == b, mors))
-                # Append morphisms.
-                self.hom[(a, b)] = self.hom.setdefault((a, b), set()).union(a_b_mors)
-                if a == b:
-                    # Identity check
-                    has_ident = False
-                    for mor in a_b_mors:
-                        if mor.is_ident:
-                            assert not has_ident, f'multiple identity morphisms for {a}'
-                            has_ident = True
-                            self.idents[a] = mor
-                    assert has_ident, f'no identity morphism for {a}'
-        return mors
-
-    def _add_mors(self, mors: 'List[Morphism]'):
-        # Method to be overriden by subclasses.
-        return mors
-
-    def add_comp_rule(self, comp_rule: 'Fn[(Morphism, Morphism), Morphism]'):
-        assert not hasattr(self, 'comp_rule'), 'composition rule already defined'
-        self._comp_rule = comp_rule
-        # Check associativity of composition rule.
-        for f in self.mors:
-            for g in self.mors:
-                if f.tgt != g.src:
-                    continue
-                for h in self.mors:
-                    if g.tgt != h.src:
-                        continue
-                    assert (f >> g) >> h == f >> (g >> h), f'associativity of composition violated: ({f} >> {g}) >> {h} == {f} >> ({g} >> {h})'
-
-    def compose(self, f, g):
-        assert f.tgt == g.src, f'source and target don\'t match: ({f}, {g})'
-        assert hasattr(self, '_comp_rule'), 'no composition rule defined'
-        return self._comp_rule(f, g)
-
-    def find(self, s: 'Any'):
-        # TODO maybe check `str(X.sym) == s` and `str(f.sym) == s`
-        # First search objects.
+    def _gen_hom_set(self) -> dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]:
+        hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]] = {}
         for X in self.objs:
-            if X.sym == s:
-                return X
-        # Then search morphisms.
+            for Y in self.objs:
+                hom[(X, Y)] = set(filter(lambda m: m.src == X and m.tgt == Y, self.mors))
+        return hom
+
+    def _find_idents(self) -> dict[Object[O], Morphism[O, M]]:
+        idents: dict[Object[O], Morphism[O, M]] = {}
+        for X in self.objs:
+            for f in self.hom[(X, X)]:
+                is_ident = True
+                # f >> g ?= g
+                for g in self.mors:
+                    if g.src == X and (f >> g) != g:
+                        is_ident = False
+                        break
+                # g >> f ?= g
+                for g in self.mors:
+                    if g.tgt == X and (g >> f) != g:
+                        is_ident = False
+                        break
+                if is_ident:
+                    assert X not in idents, f'multiple identities {idents[X]} and {f} for {X}'
+                    idents[X] = f
+            assert X in self.idents, f'no identity morphism for {X}'
+        return idents
+
+    def _check_comp_rule(self):
+        """Check associativity of composition rule."""
+        for (X, Y, Z, W) in itertools.product(self.objs, self.objs, self.objs, self.objs):
+            for (f, g, h) in itertools.product(self.hom[(X, Y)], self.hom[(Y, Z)], self.hom[(Z, W)]):
+                assert (f >> g) >> h == f >> (g >> h), f'associativity of composition violated: ({f} >> {g}) >> {h} != {f} >> ({g} >> {h})'
+
+    def compose(self, f: Morphism[O, M], g: Morphism[O, M]) -> Morphism[O, M]:
+        assert f.tgt == g.src, f'source and target don\'t match: ({f}, {g})'
+        return self.comp_rule(f, g)
+
+    def find_obj_by_name(self, name: str):
+        return self.find_obj(lambda X: X.sym.name == name)
+
+    def find_obj(self, pred: Callable[[Object[O]], bool]) -> Object[O]:
+        res = None
+        for X in self.objs:
+            if pred(X):
+                assert res is None, 'multiple objects satisfying predicate'
+                res = X
+        assert res is not None, 'no object satisfying predicate'
+        return res
+
+    def find_mor_by_name(self, name: str):
+        return self.find_mor(lambda f: f.sym.name == name)
+
+    def find_mor(self, pred: Callable[[Morphism[O, M]], bool]) -> Morphism[O, M]:
+        res = None
         for f in self.mors:
-            if f.sym == s:
-                return f
-        return None
+            if pred(f):
+                assert res is None, 'multiple morphisms satisfying predicate'
+                res = f
+        assert res is not None, 'no morphism satisfying predicate'
+        return res
 
     def __str__(self):
         return f'objs: {self.objs},\nmors: {self.mors}'
@@ -149,57 +156,76 @@ class Category:
 # We need special definitions for Set, since it's an infinite category. #
 #########################################################################
 
-class SetMorSym:
-    def __init__(self, fn: 'Fn', s: str):
-        self.fn = fn
-        self.s = s
+# class SetMorSym:
+#     def __init__(self, fn: 'Fn', s: str):
+#         self.fn = fn
+#         self.s = s
 
-    def __call__(self, arg):
-        return self.fn(arg)
+#     def __call__(self, arg):
+#         return self.fn(arg)
 
-    def __str__(self):
-        return self.s
+#     def __str__(self):
+#         return self.s
 
-    def __repr__(self):
-        return str(self)
+#     def __repr__(self):
+#         return str(self)
 
+from typing import Any
 
-class SetCat(Category):
+Fn = Callable[[Any], Any]
+SetObj = Object[set[Any]]
+SetMor = Morphism[set[Any], Fn]
+
+class SetCat(Category[set[Any], Fn]):
+    graph_to_mor: dict[frozenset[tuple[Any, Any]], SetMor]
+
     def __init__(self):
-        super().__init__()
-        self.mor_eval_cache = {}
+        self.objs = set()
+        self.mors = set()
+        self.graph_to_mor = {}
 
-    def add_mors(self, mors: 'List[Morphism]'):
-        res = super().add_mors(mors)
-        return {self.find_mor(mor) for mor in res}
+    def comp_rule(self, f: SetMor, g: SetMor) -> SetMor:
+        def data(x: Any) -> Any:
+            return g.data(f.data(x))
+        sym = Symbol(f'({f}) >> ({g})')
+        return Morphism(f.src, sym, data, f.tgt, cat=self)
 
-    def find_mor(self, f: Morphism):
+    def find_obj_by_set(self, data: set[Any], name: str | None = None) -> SetObj:
+        for X in self.objs:
+            if X.data == data:
+                return X
+        assert name is not None, 'new object needs name'
+        obj = Object(name, data)
+        self.objs.add(obj)
+        # Create identity morphism.
+        self.find_mor_by_fn(obj, lambda x: x, obj, name=f'id_{name}')
+        return obj
+
+    def find_mor_by_fn(self, src: SetObj, fn: Fn, tgt: SetObj, name: str | None = None) -> SetMor:
         # TODO Whenever we have a new morphism, check that the composition rule
         # still obeys laws.
 
+        assert src in self.objs, f'source {src} not in objects'
+        assert tgt in self.objs, f'target {tgt} not in objects'
         # Determine whether this is a new morphism by enumerating inputs and checking outputs.
-        # Only frozen sets are hashable.
-        graph = frozenset((elt, f.sym.fn(elt)) for elt in f.src.sym)
-        self.mor_eval_cache.setdefault(graph, []).append(f)
-        res = self.mor_eval_cache[graph][0]
-        # assert f.is_ident == res.is_ident, 'inconsistent identity tags'
-        return res
-
-    def _comp_rule(self, f: Morphism, g: Morphism) -> Morphism:
-        fn = lambda x: g(f(x))
-        sym = SetMorSym(fn, f'({f}) >> ({g})')
-        res = Morphism(f.src, sym, f.tgt, is_ident=f.is_ident and g.is_ident)
-        return self.find_mor(res)
-
-    def find(self, s: 'Any'):
-        res = super().find(s)
-        if res is not None:
-            return res
-        if isinstance(s, set):
-            [res] = self.add_objs([frozenset(s)])
-            return res
-        elif isinstance(s, frozenset):
-            [res] = self.add_objs([s])
-            return res
-        else:
-            assert False
+        # Convert to list to determinize the order.
+        domain = list(src.data)
+        image = [fn(elt) for elt in domain]
+        codomain = tgt.data
+        assert set(image).issubset(codomain), f"function from {src} doesn't map onto subset of {tgt}"
+        # Note: need frozen sets, in order to be hashable.
+        graph = frozenset(zip(domain, image))
+        if graph in self.graph_to_mor:
+            # If we've already encountered the graph, return the previously encountered morphism.
+            return self.graph_to_mor[graph]
+        # Otherwise, this is a new morphism.
+        assert name is not None, 'new morphism needs name'
+        mor: SetMor = Morphism(src, Symbol(name), fn, tgt, cat=self)
+        self.mors.add(mor)
+        self.hom.setdefault((src, tgt), set()).add(mor)
+        self.graph_to_mor[graph] = mor
+        if domain == image:
+            # Note this is only valid because we're using list equality and not
+            # set equality.
+            self.idents[src] = mor
+        return mor
