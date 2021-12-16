@@ -42,8 +42,12 @@ class Functor(Generic[CO, CM, DO, DM]):
         for mor in C.mors:
             F_mor(mor)
 
-    def __call__(self, arg : Object[CO] | Morphism[CO, CM]):
-        if isinstance(arg, Object):
-            return self.F_obj(arg)
-        else:
-            return self.F_mor(arg)
+    # TODO I'd love to have this functionality but typechecking can't determine
+    # which side of the sum the result lies on, even though it's clearly
+    # deducible.  This leads to expressions like F(f) >> F(g) not typechecking,
+    # because it thinks the operands *could* be objects.
+    # def __call__(self, arg : Object[CO] | Morphism[CO, CM]):
+    #     if isinstance(arg, Object):
+    #         return self.F_obj(arg)
+    #     else:
+    #         return self.F_mor(arg)

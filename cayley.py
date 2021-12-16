@@ -4,11 +4,9 @@ from cat_insts import *
 
 def build_cayley_functor(G: Category[O, M], SC: SetCat) -> Functor[O, M, set[Any], Fn]:
     [X] = G.objs
-    # elts = G.mors
 
     def F_obj(A: Object[O]) -> SetObj:
         assert A == X
-        # set(elts)
         SC_obj = G.hom[(A, A)]
         return SC.find_obj_by_set(SC_obj, name=str(SC_obj))
 

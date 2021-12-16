@@ -9,15 +9,15 @@ def test_Z5():
 
     CayleyF = build_cayley_functor(Z5, SC)
 
+    print(Z5.mors)
     zero = Z5.find_mor_by_name('0')
     one = Z5.find_mor_by_name('1')
     # two = Z5.find_mor_by_name('2')
     three = Z5.find_mor_by_name('3')
 
-    zero_S = CayleyF(zero)
-    one_S = CayleyF(one)
-    # two_S = CayleyF(two)
-    three_S = CayleyF(three)
+    zero_S = CayleyF.F_mor(zero)
+    one_S = CayleyF.F_mor(one)
+    three_S = CayleyF.F_mor(three)
 
     print(f'{(zero >> one)=}')
     print(f'{(one >> one)=}')
@@ -34,15 +34,15 @@ def test_D3():
 
     CayleyF = build_cayley_functor(D3, SC)
 
-    r0 = D3.find('r0')
-    r1 = D3.find('r1')
-    f1 = D3.find('f1')
-    f2 = D3.find('f2')
+    r0 = D3.find_mor_by_name('r0')
+    r1 = D3.find_mor_by_name('r1')
+    f1 = D3.find_mor_by_name('f1')
+    f2 = D3.find_mor_by_name('f2')
 
-    r0_S = CayleyF(r0)
-    r1_S = CayleyF(r1)
-    f1_S = CayleyF(f1)
-    f2_S = CayleyF(f2)
+    r0_S = CayleyF.F_mor(r0)
+    r1_S = CayleyF.F_mor(r1)
+    f1_S = CayleyF.F_mor(f1)
+    f2_S = CayleyF.F_mor(f2)
 
     print(f'{()=}')
     print(f'{(r0 >> r0)=}')
@@ -58,4 +58,4 @@ def test_D3():
 
 if __name__ == '__main__':
     test_Z5()
-    # test_D3()
+    test_D3()

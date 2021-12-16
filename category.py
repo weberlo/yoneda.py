@@ -1,5 +1,4 @@
 from typing import Callable, Generic, TypeVar, Any
-from dataclasses import dataclass
 import itertools
 
 from symbol import *
@@ -190,8 +189,6 @@ class Category(Generic[O, M]):
 
 #     def __repr__(self):
 #         return str(self)
-
-from typing import Any
 
 Fn = Callable[[Any], Any]
 SetObj = Object[set[Any]]
