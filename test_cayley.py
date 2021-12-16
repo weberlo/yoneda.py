@@ -9,16 +9,14 @@ def test_Z5():
 
     CayleyF = build_cayley_functor(Z5, SC)
 
-    X = Z5.find('X')
-    zero = Z5.find('0')
-    one = Z5.find('1')
-    two = Z5.find('2')
-    three = Z5.find('3')
+    zero = Z5.find_mor_by_name('0')
+    one = Z5.find_mor_by_name('1')
+    # two = Z5.find_mor_by_name('2')
+    three = Z5.find_mor_by_name('3')
 
-    X_S = CayleyF(X)
     zero_S = CayleyF(zero)
     one_S = CayleyF(one)
-    two_S = CayleyF(two)
+    # two_S = CayleyF(two)
     three_S = CayleyF(three)
 
     print(f'{(zero >> one)=}')
@@ -59,4 +57,5 @@ def test_D3():
 
 
 if __name__ == '__main__':
-    test_D3()
+    test_Z5()
+    # test_D3()

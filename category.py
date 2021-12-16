@@ -1,55 +1,76 @@
-from typing import Callable, Generic, TypeVar
+from typing import Callable, Generic, TypeVar, Any
 from dataclasses import dataclass
 import itertools
 
-from util import *
+from symbol import *
 
 O = TypeVar('O')
 M = TypeVar('M')
 K = TypeVar('K')
 
-@dataclass(init=False)
 class Object(Generic[O]):
     sym: Symbol
     data: O
 
     def __init__(self, name: str, data: O):
-        self.name = Symbol(name)
+        self.sym = Symbol(name)
         self.data = data
 
+    def __str__(self):
+        return str(self.sym)
 
-@dataclass(init=False)
+    def __repr__(self):
+        return str(self.sym)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __eq__(self, other: Any):
+        assert isinstance(other, Object)
+        return self.sym == other.sym
+
+
 class Morphism(Generic[O, M]):
-    src: O
+    src: Object[O]
     sym: Symbol
     data: M
-    tgt: O
-    cat: 'Category[O, M]' | None
+    tgt: Object[O]
+    cat: 'Category[O, M] | None'
 
-    def __init__(self, src: O, sym: Symbol, data: M, tgt: O, cat: 'Category[O, M]' | None = None):
+    def __init__(
+            self,
+            src: Object[O],
+            name: str,
+            data: M,
+            tgt: Object[O],
+            cat: 'Category[O, M] | None' = None):
         self.src = src
-        self.sym = sym
+        self.sym = Symbol(name)
         self.data = data
         self.tgt = tgt
         self.cat = cat
         # Print out binding with type, and add parentheses if there are any
         # spaces in the symbol name.
-        data_str = str(data)
-        data_str = f'({data_str})' if ' ' in data_str else data_str
-        print(f'Let {data_str}: {src} ⟶ {tgt}.')
+        name_str = f'({name})' if ' ' in name else name
+        print(f'Let {name_str}: {src} ⟶ {tgt}.')
 
     def __str__(self):
         # return f'{self.src} -({self.sym})-> {self.tgt}'
-        return f'{self.data}'
+        return f'{self.sym}'
 
     def __repr__(self):
         return str(self)
 
-    # def __hash__(self):
-    #     return hash(str(self))
+    def __hash__(self):
+        return hash(str(self))
 
-    # def __eq__(self, other: 'Morphism[O, M]') -> bool:
-    #     return self.src == other.src and self.data == other.data and self.tgt == other.tgt
+    def __eq__(self, other: Any) -> bool:
+        assert isinstance(other, Morphism)
+        return self.src == other.src \
+            and self.sym == other.sym \
+            and self.data == other.data \
+            and self.tgt == other.tgt \
+            and self.cat == other.cat
 
     def set_cat(self, cat: 'Category[O, M]'):
         assert self.cat is None, f'category already defined for morphism {self}'
@@ -108,7 +129,7 @@ class Category(Generic[O, M]):
                 if is_ident:
                     assert X not in idents, f'multiple identities {idents[X]} and {f} for {X}'
                     idents[X] = f
-            assert X in self.idents, f'no identity morphism for {X}'
+            assert X in idents, f'no identity morphism for {X}'
         return idents
 
     def _check_comp_rule(self):
@@ -182,13 +203,15 @@ class SetCat(Category[set[Any], Fn]):
     def __init__(self):
         self.objs = set()
         self.mors = set()
+        self.hom = {}
+        self.idents = {}
         self.graph_to_mor = {}
 
     def comp_rule(self, f: SetMor, g: SetMor) -> SetMor:
         def data(x: Any) -> Any:
             return g.data(f.data(x))
-        sym = Symbol(f'({f}) >> ({g})')
-        return Morphism(f.src, sym, data, f.tgt, cat=self)
+        name = f'({f}) >> ({g})'
+        return self.find_mor_by_fn(f.src, data, f.tgt, name)
 
     def find_obj_by_set(self, data: set[Any], name: str | None = None) -> SetObj:
         for X in self.objs:
@@ -204,7 +227,6 @@ class SetCat(Category[set[Any], Fn]):
     def find_mor_by_fn(self, src: SetObj, fn: Fn, tgt: SetObj, name: str | None = None) -> SetMor:
         # TODO Whenever we have a new morphism, check that the composition rule
         # still obeys laws.
-
         assert src in self.objs, f'source {src} not in objects'
         assert tgt in self.objs, f'target {tgt} not in objects'
         # Determine whether this is a new morphism by enumerating inputs and checking outputs.
@@ -220,7 +242,7 @@ class SetCat(Category[set[Any], Fn]):
             return self.graph_to_mor[graph]
         # Otherwise, this is a new morphism.
         assert name is not None, 'new morphism needs name'
-        mor: SetMor = Morphism(src, Symbol(name), fn, tgt, cat=self)
+        mor: SetMor = Morphism(src, name, fn, tgt, cat=self)
         self.mors.add(mor)
         self.hom.setdefault((src, tgt), set()).add(mor)
         self.graph_to_mor[graph] = mor

@@ -1,54 +1,31 @@
 from category import *
+from util import *
 
-def build_Zn(n: int):
-    Zn = Category()
+def build_Zn(n: int) -> Category[None, int]:
+    X = Object('X', None)
 
-    [X] = Zn.add_objs(['X'])
+    mors = [Morphism(X, str(i), i, X) for i in range(n)]
 
-    mors = [Morphism(X, str(i), X) for i in range(n)]
-    # 0 is the identity
-    mors[0].is_ident = True
-    mors = Zn.add_mors(mors)
-
-    comp_dict = {}
+    comp_dict: dict[tuple[Morphism[None, int], Morphism[None, int]], Morphism[None, int]] = {}
     for a in mors:
         for b in mors:
-            comp_dict[(a, b)] = mors[(int(a.sym) + int(b.sym)) % n]
-    def comp_rule(f: Morphism, g: Morphism):
-        return comp_dict[(f, g)]
-    Zn.add_comp_rule(comp_rule)
+            comp_dict[(a, b)] = mors[(a.data + b.data) % n]
 
-    return Zn
-
-
-def cayley_table_to_comp_dict(order, table):
-    comp_dict = {}
-    for i, a in enumerate(order):
-        for j, b in enumerate(order):
-            # Row `m` and column `n` of the table correspond to `order[m] *
-            # order[n]`, as this is the Cayley table convention.  However,
-            # recall this is in *classical* composition order,but we want the
-            # entry `(a, b)` to correspond to the forward composition `a >> b`,
-            # so we grab `table[j][i]`, rather than `table[i][j]`.
-            comp_dict[(a, b)] = table[j][i]
-    return comp_dict
+    return Category({X}, set(mors), dict_as_comp_rule(comp_dict))
 
 
 # TODO generalize to Dn
-def build_D3():
+def build_D3() -> Category[None, None]:
     n = 3
-    D3 = Category()
 
-    [X] = D3.add_objs(['X'])
+    X = Object('X', None)
 
     # Rotations
-    mors = [Morphism(X, f'r{i}', X) for i in range(n)]
+    mors = [Morphism(X, f'r{i}', None, X) for i in range(n)]
     # Reflections
-    mors += [Morphism(X, f'f{i}', X) for i in range(n)]
-    # r0 is the identity
-    mors[0].is_ident = True
+    mors += [Morphism(X, f'f{i}', None, X) for i in range(n)]
 
-    [r0, r1, r2, f0, f1, f2] = D3.add_mors(mors)
+    [r0, r1, r2, f0, f1, f2] = mors
 
     comp_dict = cayley_table_to_comp_dict(
         order=[r0, r1, r2, f0, f1, f2],
@@ -61,24 +38,20 @@ def build_D3():
             [f2, f1, f0, r2, r1, r0],  # f2
         ]
     )
-    def comp_rule(f: Morphism, g: Morphism):
+    def comp_rule(f: Morphism[None, None], g: Morphism[None, None]) -> Morphism[None, None]:
         return comp_dict[(f, g)]
-    D3.add_comp_rule(comp_rule)
 
-    return D3
+    return Category({X}, set(mors), comp_rule)
 
 
-def build_walking_arrow():
-    Two = Category()
+def build_walking_arrow() -> Category[None, None]:
+    [one, two] = [Object('1', None), Object('2', None)]
 
-    [one, two] = Two.add_objs(['1', '2'])
-
-    mors = [
-        Morphism(one, 'id_1', one, is_ident=True),
-        Morphism(one, 'f', two),
-        Morphism(two, 'id_2', two, is_ident=True)
+    [id_1, f, id_2] = [
+        Morphism(one, 'id_1', None, one),
+        Morphism(one, 'f', None, two),
+        Morphism(two, 'id_2', None, two)
     ]
-    [id_1, f, id_2] = Two.add_mors(mors)
 
     comp_dict = {
         (id_1, id_1): id_1,
@@ -86,8 +59,5 @@ def build_walking_arrow():
         (f, id_2): f,
         (id_2, id_2): id_2,
     }
-    def comp_rule(f: Morphism, g: Morphism):
-        return comp_dict[(f, g)]
-    Two.add_comp_rule(comp_rule)
 
-    return Two
+    return Category({one, two}, {id_1, f, id_2}, dict_as_comp_rule(comp_dict))
