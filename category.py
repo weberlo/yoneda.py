@@ -65,11 +65,13 @@ class Morphism(Generic[O, M]):
 
     def __eq__(self, other: Any) -> bool:
         assert isinstance(other, Morphism)
-        return self.src == other.src \
-            and self.sym == other.sym \
-            and self.data == other.data \
-            and self.tgt == other.tgt \
-            and self.cat == other.cat
+        # TODO how the fuck do generics work with __eq__?
+        res  = self.src  == other.src   # type: ignore
+        res &= self.sym  == other.sym   # type: ignore
+        res &= self.data == other.data  # type: ignore
+        res &= self.tgt  == other.tgt   # type: ignore
+        res &= self.cat  == other.cat   # type: ignore
+        return res  # type: ignore
 
     def set_cat(self, cat: 'Category[O, M]'):
         assert self.cat is None, f'category already defined for morphism {self}'
@@ -138,7 +140,7 @@ class Category(Generic[O, M]):
                 assert (f >> g) >> h == f >> (g >> h), f'associativity of composition violated: ({f} >> {g}) >> {h} != {f} >> ({g} >> {h})'
 
     def compose(self, f: Morphism[O, M], g: Morphism[O, M]) -> Morphism[O, M]:
-        assert f.tgt == g.src, f'source and target don\'t match: ({f}, {g})'
+        assert f.tgt == g.src, f"target of ({f.src} --({f})-> {f.tgt}) doesn't match source of ({g.src} --({g})-> {g.tgt})"
         return self.comp_rule(f, g)
 
     def find_obj_by_name(self, name: str):
@@ -195,20 +197,20 @@ SetObj = Object[set[Any]]
 SetMor = Morphism[set[Any], Fn]
 
 class SetCat(Category[set[Any], Fn]):
-    graph_to_mor: dict[frozenset[tuple[Any, Any]], SetMor]
+    local_graph_to_mor: dict[tuple[SetObj, SetObj], dict[frozenset[tuple[Any, Any]], SetMor]]
 
     def __init__(self):
         self.objs = set()
         self.mors = set()
         self.hom = {}
         self.idents = {}
-        self.graph_to_mor = {}
+        self.local_graph_to_mor = {}
 
     def comp_rule(self, f: SetMor, g: SetMor) -> SetMor:
         def data(x: Any) -> Any:
             return g.data(f.data(x))
         name = f'({f}) >> ({g})'
-        return self.find_mor_by_fn(f.src, data, f.tgt, name)
+        return self.find_mor_by_fn(f.src, data, g.tgt, name)
 
     def find_obj_by_set(self, data: set[Any], name: str | None = None) -> SetObj:
         for X in self.objs:
@@ -231,18 +233,19 @@ class SetCat(Category[set[Any], Fn]):
         domain = list(src.data)
         image = [fn(elt) for elt in domain]
         codomain = tgt.data
-        assert set(image).issubset(codomain), f"function from {src} doesn't map onto subset of {tgt}"
+        assert set(image).issubset(codomain), f"function ({name}) from {src} doesn't map onto subset of {tgt}: image={set(image)}"
         # Note: need frozen sets, in order to be hashable.
         graph = frozenset(zip(domain, image))
-        if graph in self.graph_to_mor:
-            # If we've already encountered the graph, return the previously encountered morphism.
-            return self.graph_to_mor[graph]
+        if (src, tgt) in self.local_graph_to_mor and graph in self.local_graph_to_mor[(src, tgt)]:
+            # If we've already encountered the graph for this type signature,
+            # return the previously encountered morphism.
+            return self.local_graph_to_mor[(src, tgt)][graph]
         # Otherwise, this is a new morphism.
         assert name is not None, 'new morphism needs name'
         mor: SetMor = Morphism(src, name, fn, tgt, cat=self)
         self.mors.add(mor)
         self.hom.setdefault((src, tgt), set()).add(mor)
-        self.graph_to_mor[graph] = mor
+        self.local_graph_to_mor.setdefault((src, tgt), {})[graph] = mor
         if domain == image:
             # Note this is only valid because we're using list equality and not
             # set equality.
