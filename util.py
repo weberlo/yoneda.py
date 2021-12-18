@@ -1,5 +1,6 @@
 from category import *
 from typing import Callable
+# from enum import Enum as _Enum
 
 def cayley_table_to_comp_dict(
         order: list[Morphism[O, M]],
@@ -24,3 +25,8 @@ def dict_as_comp_rule(
         return comp_dict[(f, g)]
     return comp_rule
 
+
+# class Enum(_Enum):
+#     @classmethod
+#     def export_to(cls, namespace: dict[str, object]):
+#         namespace.update(cls.__members__)

@@ -22,7 +22,7 @@ class Symbol:
     name: str
 
     def __init__(self, name: str):
-        assert name not in SYMBOL_REGISTRY, f"symbol '{name} already used"
+        assert name not in SYMBOL_REGISTRY, f'symbol {name} already used'
         SYMBOL_REGISTRY.add(name)
         self.name = name
 

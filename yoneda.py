@@ -2,90 +2,40 @@ from category import *
 from functor import *
 from hom_functor import *
 from nat_trans import *
+from presheave import *
 
 # TODO maybe there should be a singleton Set instance
-SC = SetCat()
+# SC = SetCat()
 
-def build_yoneda_embed(C: Category, COpToSet: 'PresheafCat'):
-    assert isinstance(COpToSet, PresheafCat)
-    def F_obj(X: 'Object[C]'):
-        fnor = build_contravariant_hom_functor(C, X, SC)
-        return COpToSet.find(fnor)
+def build_yoneda_embed(
+        C: Category[CO, CM],
+        PshC: PshCat[CO, CM]
+        ) -> Functor[CO, CM, Psh[CO, CM], PshNatTrans[CO, CM]]:
+    SC = PshC.set_cat
 
-    def F_mor(f: 'Morphism[X, Y]'):
-        # TODO There's something not right about how we're building the
-        # morphisms.  I'd recommend starting from scratch in this function.
-        F = F_obj(f.src).sym
-        G = F_obj(f.tgt).sym
-        def eta(A):
-            res = SetMorSym(lambda g: g >> f, f'· >> {f.sym}')
-            return SC.find_mor(Morphism(F(A), res, G(A), is_ident=f.is_ident))
-        res = PshMorSym(NatTrans(F, G, eta), f'· >> {f.sym}')
-        return SC.find_mor(Morphism(F, res, G, is_ident=f.is_ident))
+    def obj_map(X: Object[CO]) -> PshObj[CO, CM]:
+        F = build_contravariant_hom_functor(C, X, SC)
+        return PshC.find_obj_by_functor(F, name=f'{C}(-,{X})')
 
-    return Functor(C, COpToSet, F_obj, F_mor)
+    def mor_map(f: Morphism[CO, CM]) -> PshMor[CO, CM]:
+        X = f.src
+        Y = f.tgt
+        C_·_X_obj = obj_map(X)
+        C_·_Y_obj = obj_map(Y)
+        C_·_X = C_·_X_obj.data
+        C_·_Y = C_·_Y_obj.data
+        def eta(A: Object[CO]) -> SetMor:
+            C_A_X = C_·_X.obj_map(A)
+            C_A_Y = C_·_Y.obj_map(A)
+            data: Callable[[Morphism[CO, CM]], Morphism[CO, CM]] = lambda x: x >> f
+            # We need a unique name for each morphism, even though they're all
+            # formed by postcomposition with `f`.
+            # name = f'(· ∈ {C_A_X}) >> {f}'
+            name = f'{C}({A}, {f})'
+            # name = f'· >> {f}'
+            return SC.find_mor_by_fn(C_A_X, data, C_A_Y, name)
+        nat_trans = NatTrans[CO, CM, set[Any], Fn](C_·_X, C_·_Y, eta)
+        name = f'∀(A : Ob({C})). ({C})(A, {X}) .>> {f}'
+        return PshC.find_mor_by_nat_trans(C_·_X_obj, nat_trans, C_·_Y_obj, name)
 
-
-class PshMorSym:
-    def __init__(self, eta: 'NatTrans', s: str):
-        self.eta = eta
-        self.s = s
-
-    def __call__(self, arg):
-        return self.eta(arg)
-
-    def __str__(self):
-        return self.s
-
-    def __repr__(self):
-        return str(self)
-
-
-class PresheafCat(Category):
-    def __init__(self):
-        super().__init__()
-
-    def find(self, s: 'Any'):
-        res = super().find(s)
-        if res is not None:
-            return res
-        if isinstance(s, Functor):
-            [res] = self.add_objs([s])
-            return res
-        else:
-            assert False
-
-#     def add_mors(self, mors: 'List[Morphism]'):
-#         res = super().add_mors(mors)
-#         return {self.find_mor(mor) for mor in res}
-
-#     def find_mor(self, f: Morphism):
-#         # TODO Whenever we have a new morphism, check that the composition rule
-#         # still obeys laws.
-
-#         # Determine whether this is a new morphism by enumerating inputs and checking outputs.
-#         # Only frozen sets are hashable.
-#         graph = frozenset((elt, f.sym.fn(elt)) for elt in f.src.sym)
-#         self.mor_eval_cache.setdefault(graph, []).append(f)
-#         res = self.mor_eval_cache[graph][0]
-#         # assert f.is_ident == res.is_ident, 'inconsistent identity tags'
-#         return res
-
-#     def _comp_rule(self, f: Morphism, g: Morphism) -> Morphism:
-#         fn = lambda x: g(f(x))
-#         sym = SetMorSym(fn, f'({f}) >> ({g})', f)
-#         res = Morphism(f.src, sym, f.tgt, is_ident=f.is_ident and g.is_ident)
-#         return self.find_mor(res)
-
-#     def find(self, s: 'Any'):
-#         res = super().find(s)
-#         if res is not None:
-#             return res
-#         if isinstance(s, Functor):
-#             [res] = self.add_objs([s])
-#             return res
-#         # elif isinstance(s, NatTrans):
-#         #     [res] = self.add_mors([s])
-#         #     return res
-#         else:
-#             assert False
+    return Functor(C, PshC, obj_map, mor_map, Variance.Covariant)

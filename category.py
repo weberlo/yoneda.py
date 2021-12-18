@@ -54,8 +54,10 @@ class Morphism(Generic[O, M]):
         print(f'Let {name_str}: {src} ⟶ {tgt}.')
 
     def __str__(self):
-        # return f'{self.src} -({self.sym})-> {self.tgt}'
-        return f'{self.sym}'
+            return f'{self.sym}'
+
+    def str_with_type(self):
+        return f'{self.src} -({self.sym})-> {self.tgt}'
 
     def __repr__(self):
         return str(self)
@@ -65,13 +67,13 @@ class Morphism(Generic[O, M]):
 
     def __eq__(self, other: Any) -> bool:
         assert isinstance(other, Morphism)
-        # TODO how the fuck do generics work with __eq__?
-        res  = self.src  == other.src   # type: ignore
-        res &= self.sym  == other.sym   # type: ignore
-        res &= self.data == other.data  # type: ignore
-        res &= self.tgt  == other.tgt   # type: ignore
-        res &= self.cat  == other.cat   # type: ignore
-        return res  # type: ignore
+        f = self
+        g: Morphism[O, M] = other
+        return f.src == g.src \
+            and f.sym == g.sym \
+            and f.data == g.data \
+            and f.tgt == g.tgt \
+            and f.cat == g.cat \
 
     def set_cat(self, cat: 'Category[O, M]'):
         assert self.cat is None, f'category already defined for morphism {self}'
@@ -90,12 +92,14 @@ class Category(Generic[O, M]):
     comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]
     hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]
     idents: dict[Object[O], Morphism[O, M]]
+    sym: Symbol
 
     def __init__(
             self,
             objs: set[Object[O]],
             mors: set[Morphism[O, M]],
-            comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]):
+            comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]],
+            name: str | None = None):
         self.objs = objs
         for mor in mors:
             mor.set_cat(self)
@@ -104,6 +108,9 @@ class Category(Generic[O, M]):
         self.hom = self._gen_hom_set()
         self.idents = self._find_idents()
         self._check_comp_rule()
+        if name is None:
+            name = gen_fresh('C')
+        self.sym = Symbol(name)
 
     def _gen_hom_set(self) -> dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]:
         hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]] = {}
@@ -140,7 +147,7 @@ class Category(Generic[O, M]):
                 assert (f >> g) >> h == f >> (g >> h), f'associativity of composition violated: ({f} >> {g}) >> {h} != {f} >> ({g} >> {h})'
 
     def compose(self, f: Morphism[O, M], g: Morphism[O, M]) -> Morphism[O, M]:
-        assert f.tgt == g.src, f"target of ({f.src} --({f})-> {f.tgt}) doesn't match source of ({g.src} --({g})-> {g.tgt})"
+        assert f.tgt == g.src, f"target of ({f.str_with_type()}) doesn't match source of ({g.str_with_type()})"
         return self.comp_rule(f, g)
 
     def find_obj_by_name(self, name: str):
@@ -168,7 +175,8 @@ class Category(Generic[O, M]):
         return res
 
     def __str__(self):
-        return f'objs: {self.objs},\nmors: {self.mors}'
+        # return f'objs: {self.objs},\nmors: {self.mors}'
+        return str(self.sym)
 
     def __repr__(self):
         return str(self)
@@ -177,20 +185,6 @@ class Category(Generic[O, M]):
 #########################################################################
 # We need special definitions for Set, since it's an infinite category. #
 #########################################################################
-
-# class SetMorSym:
-#     def __init__(self, fn: 'Fn', s: str):
-#         self.fn = fn
-#         self.s = s
-
-#     def __call__(self, arg):
-#         return self.fn(arg)
-
-#     def __str__(self):
-#         return self.s
-
-#     def __repr__(self):
-#         return str(self)
 
 Fn = Callable[[Any], Any]
 SetObj = Object[set[Any]]
@@ -220,7 +214,7 @@ class SetCat(Category[set[Any], Fn]):
         obj = Object(name, data)
         self.objs.add(obj)
         # Create identity morphism.
-        self.find_mor_by_fn(obj, lambda x: x, obj, name=f'id_{name}')
+        self.find_mor_by_fn(obj, lambda x: x, obj, name=f'id_({name})')
         return obj
 
     def find_mor_by_fn(self, src: SetObj, fn: Fn, tgt: SetObj, name: str | None = None) -> SetMor:
@@ -246,8 +240,9 @@ class SetCat(Category[set[Any], Fn]):
         self.mors.add(mor)
         self.hom.setdefault((src, tgt), set()).add(mor)
         self.local_graph_to_mor.setdefault((src, tgt), {})[graph] = mor
-        if domain == image:
+        if domain == image and src == tgt:
             # Note this is only valid because we're using list equality and not
             # set equality.
             self.idents[src] = mor
         return mor
+

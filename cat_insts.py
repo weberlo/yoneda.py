@@ -61,3 +61,39 @@ def build_walking_arrow() -> Category[None, None]:
     }
 
     return Category({one, two}, {id_1, f, id_2}, dict_as_comp_rule(comp_dict))
+
+
+# TODO write function to build categories from sketches
+def build_nontriv_comp() -> Category[None, None]:
+    [X, Y, Z] = [
+        Object('X', None),
+        Object('Y', None),
+        Object('Z', None)
+        ]
+
+    [id_X, id_Y, id_Z, f, g, f_g] = [
+        Morphism(X, 'id_X', None, X),
+        Morphism(Y, 'id_Y', None, Y),
+        Morphism(Z, 'id_Z', None, Z),
+        Morphism(X, 'f', None, Y),
+        Morphism(Y, 'g', None, Z),
+        Morphism(X, 'f;g', None, Z),
+    ]
+
+    comp_dict = {
+        (id_X, id_X): id_X,
+        (id_Y, id_Y): id_Y,
+        (id_Z, id_Z): id_Z,
+        (id_X, f): f,
+        (f, id_Y): f,
+        (id_Y, g): g,
+        (g, id_Z): g,
+        (f, g): f_g,
+        (id_X, f_g): f_g,
+        (f_g, id_Z): f_g,
+    }
+
+    return Category(
+        {X, Y, Z},
+        {id_X, id_Y, id_Z, f, g, f_g},
+        dict_as_comp_rule(comp_dict))
