@@ -35,7 +35,8 @@ def build_yoneda_embed(
             # name = f'· >> {f}'
             return SC.find_mor_by_fn(C_A_X, data, C_A_Y, name)
         nat_trans = NatTrans[CO, CM, set[Any], Fn](C_·_X, C_·_Y, eta)
-        name = f'∀(A : Ob({C})). ({C})(A, {X}) .>> {f}'
+        # name = f'∀ A: Ob({C}). {C}(A, {f})'
+        name = f'{C}(-,{f})'
         return PshC.find_mor_by_nat_trans(C_·_X_obj, nat_trans, C_·_Y_obj, name)
 
     return Functor(C, PshC, obj_map, mor_map, Variance.Covariant)

@@ -81,8 +81,12 @@ class Functor(Generic[CO, CM, DO, DM]):
     # which side of the sum the result lies on, even though it's clearly
     # deducible.  This leads to expressions like F(f) >> F(g) not typechecking,
     # because it thinks the operands *could* be objects.
-    # def __call__(self, arg : Object[CO] | Morphism[CO, CM]):
+    # def __call__(self, arg : Object[CO] | Morphism[CO, CM]) -> Object[DO] | Morphism[DO, DM]:
     #     if isinstance(arg, Object):
-    #         return self.obj_map(arg)
+    #         res = self.obj_map(arg)
+    #         assert isinstance(res, Object)
+    #         return res
     #     else:
-    #         return self.mor_map(arg)
+    #         res = self.mor_map(arg)
+    #         assert isinstance(res, Morphism)
+    #         return res
