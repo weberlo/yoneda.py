@@ -27,19 +27,7 @@ class NatTrans(Generic[CO, CM, DO, DM]):
             G_f = G.mor_map(f)
             eta_X = eta(f.src)
             eta_Y = eta(f.tgt)
-            # TODO The casing on variance is a code smell.  We should be able to
-            # build an "opposite category" construction that tracks the original
-            # category and produces morphisms according to the original
-            # category.
-            match (F.variance, G.variance):
-                case (Variance.Covariant, Variance.Covariant):
-                    assert F_f >> eta_Y == eta_X >> G_f, 'naturality condition violated'
-                case (Variance.Covariant, Variance.Contravariant):
-                    assert False
-                case (Variance.Contravariant, Variance.Covariant):
-                    assert False
-                case (Variance.Contravariant, Variance.Contravariant):
-                    assert F_f >> eta_X == eta_Y >> G_f, 'naturality condition violated'
+            assert F_f >> eta_Y == eta_X >> G_f, 'naturality condition violated'
 
     def __call__(self, arg: Object[CO]) -> Morphism[DO, DM]:
         return self.eta(arg)

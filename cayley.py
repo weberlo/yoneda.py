@@ -7,7 +7,7 @@ def build_cayley_functor(G: Category[O, M], SC: SetCat) -> Functor[O, M, set[Any
 
     def obj_map(A: Object[O]) -> SetObj:
         assert A == X
-        SC_obj = G.hom[(A, A)]
+        SC_obj = G.hom(A, A)
         return SC.find_obj_by_set(SC_obj, name=str(SC_obj))
 
     def mor_map(f: Morphism[O, M]) -> SetMor:

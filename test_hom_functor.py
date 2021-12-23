@@ -23,11 +23,11 @@ def test_contravariant():
     WA_x_1 = build_contravariant_hom_functor(WA, one, SC)
     print(WA_x_1.obj_map(one))
     print(WA_x_1.obj_map(two))
-    print(WA_x_1.mor_map(f))
-    print(WA_x_1.mor_map(id_1))
-    print(WA_x_1.mor_map(id_2))
+    print(WA_x_1.mor_map(f.op).str_with_type())
+    print(WA_x_1.mor_map(id_1.op).str_with_type())
+    print(WA_x_1.mor_map(id_2.op).str_with_type())
 
 
 if __name__ == '__main__':
-    # test_covariant()
+    test_covariant()
     test_contravariant()

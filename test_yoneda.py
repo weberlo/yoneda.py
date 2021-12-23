@@ -49,13 +49,13 @@ def test_nontriv_comp():
     print(H_f >> H_g)
     C_X_fg = (H_f >> H_g).data(X)
     print(C_X_fg)
-    print(C_X_fg.data(id_X))
+    print(C_X_fg.data(id_X.op))
     C_Y_f = H_f.data(Y)
     print(C_Y_f)
     print(C_Y_f.str_with_type())
     C_X_fg = H_fg.data(X)
     print(C_X_fg)
-    print(C_X_fg.data(id_X))
+    print(C_X_fg.data(id_X.op))
 
 
 if __name__ == '__main__':

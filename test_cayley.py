@@ -15,9 +15,9 @@ def test_Z5():
     # two = Z5.find_mor_by_name('2')
     three = Z5.find_mor_by_name('3')
 
-    zero_S = CayleyF.F_mor(zero)
-    one_S = CayleyF.F_mor(one)
-    three_S = CayleyF.F_mor(three)
+    zero_S = CayleyF.mor_map(zero)
+    one_S = CayleyF.mor_map(one)
+    three_S = CayleyF.mor_map(three)
 
     print(f'{(zero >> one)=}')
     print(f'{(one >> one)=}')
@@ -39,10 +39,10 @@ def test_D3():
     f1 = D3.find_mor_by_name('f1')
     f2 = D3.find_mor_by_name('f2')
 
-    r0_S = CayleyF.F_mor(r0)
-    r1_S = CayleyF.F_mor(r1)
-    f1_S = CayleyF.F_mor(f1)
-    f2_S = CayleyF.F_mor(f2)
+    r0_S = CayleyF.mor_map(r0)
+    r1_S = CayleyF.mor_map(r1)
+    f1_S = CayleyF.mor_map(f1)
+    f2_S = CayleyF.mor_map(f2)
 
     print(f'{()=}')
     print(f'{(r0 >> r0)=}')
@@ -58,4 +58,4 @@ def test_D3():
 
 if __name__ == '__main__':
     test_Z5()
-    test_D3()
+    # test_D3()

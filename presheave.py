@@ -17,14 +17,14 @@ class PshCat(Category[Psh[CO, CM], PshNatTrans[CO, CM]]):
     set_cat: SetCat
 
     def __init__(self, set_cat: SetCat):
-        self.objs = set()
-        self.mors = set()
-        self.hom = {}
-        self.idents = {}
+        self._objs = set()
+        self._mors = set()
+        self._hom = {}
+        self._idents = {}
         self.local_graph_to_mor = {}
         self.set_cat = set_cat
 
-    def comp_rule(self, f: PshMor[CO, CM], g: PshMor[CO, CM]) -> PshMor[CO, CM]:
+    def _comp_rule(self, f: PshMor[CO, CM], g: PshMor[CO, CM]) -> PshMor[CO, CM]:
         eta1 = f.data
         eta2 = g.data
         def eta(X: Object[CO]) -> SetMor:
@@ -77,7 +77,7 @@ class PshCat(Category[Psh[CO, CM], PshNatTrans[CO, CM]]):
         assert name is not None, 'new morphism needs name'
         mor: PshMor[CO, CM] = Morphism(src, name, nat_trans, tgt, cat=self)
         self.mors.add(mor)
-        self.hom.setdefault((src, tgt), set()).add(mor)
+        self._hom.setdefault((src, tgt), set()).add(mor)
         self.local_graph_to_mor.setdefault((src, tgt), {})[graph] = mor
         # TODO this could be a method in `Category`
         def is_ident(f: SetMor) -> bool:

@@ -2,10 +2,10 @@ from typing import Callable, Generic, TypeVar, Any
 import itertools
 
 from symbol import *
+from util import BiDict
 
 O = TypeVar('O')
 M = TypeVar('M')
-K = TypeVar('K')
 
 class Object(Generic[O]):
     sym: Symbol
@@ -53,6 +53,11 @@ class Morphism(Generic[O, M]):
         name_str = f'({name})' if ' ' in name else name
         print(f'Let {name_str}: {src} ⟶ {tgt}.')
 
+    @property
+    def op(self) -> 'Morphism[O, M]':
+        assert self.cat is not None, "can't flip morphisms without being situated in a category"
+        return self.cat.flip_mor(self)
+
     def __str__(self):
             return f'{self.sym}'
 
@@ -80,19 +85,22 @@ class Morphism(Generic[O, M]):
         self.cat = cat
 
     def __rshift__(self, other: 'Morphism[O, M]') -> 'Morphism[O, M]':
-        assert self.cat == other.cat, 'mismatched categories in composition'
-        assert self.cat is not None, 'category not set'
+        assert self.cat == other.cat, \
+            f'mismatched categories {self} ∈ {self.cat}({self.src}, {self.tgt}) and {other} ∈ {other.cat}({other.src}, {other.tgt}) in composition'
+        assert self.cat is not None, "category hasn't been set"
         return self.cat.compose(self, other)
 
 
 # TODO check for when composition rule is violated
 class Category(Generic[O, M]):
-    objs: set[Object[O]]
-    mors: set[Morphism[O, M]]
-    comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]
-    hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]
-    idents: dict[Object[O], Morphism[O, M]]
-    sym: Symbol
+    _objs: set[Object[O]]
+    _mors: set[Morphism[O, M]]
+    _hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]
+    _idents: dict[Object[O], Morphism[O, M]]
+    _comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]
+    _sym: Symbol
+    _op: 'Category[O, M]'
+    _flip_mor_dict : BiDict[Morphism[O, M]]
 
     def __init__(
             self,
@@ -100,17 +108,19 @@ class Category(Generic[O, M]):
             mors: set[Morphism[O, M]],
             comp_rule: Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]],
             name: str | None = None):
-        self.objs = objs
+        self._objs = objs
         for mor in mors:
             mor.set_cat(self)
-        self.mors = mors
-        self.comp_rule = comp_rule
-        self.hom = self._gen_hom_set()
-        self.idents = self._find_idents()
+        self._mors = mors
+        self._comp_rule = comp_rule
+        self._hom = self._gen_hom_set()
+        self._idents = self._find_idents()
         self._check_comp_rule()
         if name is None:
             name = gen_fresh('C')
-        self.sym = Symbol(name)
+        self._sym = Symbol(name)
+        self._op = OpCat(self)
+        self._flip_mor_dict = BiDict()
 
     def _gen_hom_set(self) -> dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]]:
         hom: dict[tuple[Object[O], Object[O]], set[Morphism[O, M]]] = {}
@@ -122,7 +132,7 @@ class Category(Generic[O, M]):
     def _find_idents(self) -> dict[Object[O], Morphism[O, M]]:
         idents: dict[Object[O], Morphism[O, M]] = {}
         for X in self.objs:
-            for f in self.hom[(X, X)]:
+            for f in self.hom(X, X):
                 is_ident = True
                 # f >> g ?= g
                 for g in self.mors:
@@ -143,7 +153,7 @@ class Category(Generic[O, M]):
     def _check_comp_rule(self):
         """Check associativity of composition rule."""
         for (X, Y, Z, W) in itertools.product(self.objs, self.objs, self.objs, self.objs):
-            for (f, g, h) in itertools.product(self.hom[(X, Y)], self.hom[(Y, Z)], self.hom[(Z, W)]):
+            for (f, g, h) in itertools.product(self.hom(X, Y), self.hom(Y, Z), self.hom(Z, W)):
                 assert (f >> g) >> h == f >> (g >> h), f'associativity of composition violated: ({f} >> {g}) >> {h} != {f} >> ({g} >> {h})'
 
     def compose(self, f: Morphism[O, M], g: Morphism[O, M]) -> Morphism[O, M]:
@@ -174,6 +184,50 @@ class Category(Generic[O, M]):
         assert res is not None, 'no morphism satisfying predicate'
         return res
 
+    def flip_mor(self, f: Morphism[O, M]) -> Morphism[O, M]:
+        """Return morphism in the opposite category."""
+        if f not in self._flip_mor_dict:
+            # It could only not be in the dictionary if it hasn't been created
+            # in the opposite category yet, so we must be converting a regular
+            # morphism to an opposite morphism.  All other cases are handled by
+            # the default case after the `if`.
+            op_mor_name = f.sym.name
+            if len(op_mor_name) > 1:
+                op_mor_name = f'({op_mor_name})'
+            op_mor_name = f'{op_mor_name}ᵒᵖ'
+            self._flip_mor_dict[f] = Morphism(f.tgt, op_mor_name, f.data, f.src, self.op)
+        return self._flip_mor_dict[f]
+
+    @property
+    def objs(self) -> set[Object[O]]:
+        return self._objs
+
+    @property
+    def mors(self) -> set[Morphism[O, M]]:
+        return self._mors
+
+    @property
+    def hom(self) -> Callable[[Object[O], Object[O]], set[Morphism[O, M]]]:
+        def res(X: Object[O], Y: Object[O]):
+            return self._hom[(X, Y)]
+        return res
+
+    @property
+    def idents(self) -> dict[Object[O], Morphism[O, M]]:
+        return self._idents
+
+    @property
+    def comp_rule(self) -> Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]:
+        return self._comp_rule
+
+    @property
+    def sym(self) -> Symbol:
+        return self._sym
+
+    @property
+    def op(self) -> 'Category[O, M]':
+        return self._op
+
     def __str__(self):
         # return f'objs: {self.objs},\nmors: {self.mors}'
         return str(self.sym)
@@ -194,13 +248,13 @@ class SetCat(Category[set[Any], Fn]):
     local_graph_to_mor: dict[tuple[SetObj, SetObj], dict[frozenset[tuple[Any, Any]], SetMor]]
 
     def __init__(self):
-        self.objs = set()
-        self.mors = set()
-        self.hom = {}
-        self.idents = {}
+        self._objs = set()
+        self._mors = set()
+        self._hom = {}
+        self._idents = {}
         self.local_graph_to_mor = {}
 
-    def comp_rule(self, f: SetMor, g: SetMor) -> SetMor:
+    def _comp_rule(self, f: SetMor, g: SetMor) -> SetMor:
         def data(x: Any) -> Any:
             return g.data(f.data(x))
         name = f'({f}) >> ({g})'
@@ -238,7 +292,7 @@ class SetCat(Category[set[Any], Fn]):
         assert name is not None, 'new morphism needs name'
         mor: SetMor = Morphism(src, name, fn, tgt, cat=self)
         self.mors.add(mor)
-        self.hom.setdefault((src, tgt), set()).add(mor)
+        self._hom.setdefault((src, tgt), set()).add(mor)
         self.local_graph_to_mor.setdefault((src, tgt), {})[graph] = mor
         if domain == image and src == tgt:
             # Note this is only valid because we're using list equality and not
@@ -246,3 +300,45 @@ class SetCat(Category[set[Any], Fn]):
             self.idents[src] = mor
         return mor
 
+
+class OpCat(Category[O, M]):
+    """The opposite category of an input category.
+
+    This class automatically tracks changes to the input by virtue of always
+    dispatching to the input category's data.  That is, the class merely
+    rearranges the directions of morphisms before passing them to the input
+    category's morphism set, hom sets, composition rule, etc.
+    """
+    cat: Category[O, M]
+
+    def __init__(self, cat: Category[O, M]):
+        self.cat = cat
+        self._sym = Symbol(cat.sym.name + 'ᵒᵖ')
+
+    @property
+    def objs(self):
+        return self.cat.objs
+
+    @property
+    def mors(self):
+        return set(map(self.cat.flip_mor, self.cat.mors))
+
+    @property
+    def hom(self):
+        def _hom(X: Object[O], Y: Object[O]) -> set[Morphism[O, M]]:
+            return set(map(self.cat.flip_mor, self.cat.hom(Y, X)))
+        return _hom
+
+    @property
+    def idents(self):
+        return {X: self.cat.flip_mor(self.cat.idents[X]) for X in self.objs}
+
+    @property
+    def comp_rule(self) -> Callable[[Morphism[O, M], Morphism[O, M]], Morphism[O, M]]:
+        def res(f_op: Morphism[O, M], g_op: Morphism[O, M]) -> Morphism[O, M]:
+            return self.cat.flip_mor(self.cat.comp_rule(self.cat.flip_mor(g_op), self.cat.flip_mor(f_op)))
+        return res
+
+    @property
+    def flip_mor(self, f: Morphism[O, M]) -> Morphism[O, M]:
+        return self.cat.flip_mor(f)

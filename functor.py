@@ -20,13 +20,11 @@ class Functor(Generic[CO, CM, DO, DM]):
             C: Category[CO, CM],
             D: Category[DO, DM],
             obj_map: Callable[[Object[CO]], Object[DO]],
-            mor_map: Callable[[Morphism[CO, CM]], Morphism[DO, DM]],
-            variance: Variance):
+            mor_map: Callable[[Morphism[CO, CM]], Morphism[DO, DM]]):
         self.src = C
         self.tgt = D
         self.obj_map = obj_map
         self.mor_map = mor_map
-        self.variance = variance
 
         for X in C.objs:
             id_X = C.idents[X]
@@ -37,17 +35,12 @@ class Functor(Generic[CO, CM, DO, DM]):
 
         for f in C.mors:
             for g in C.mors:
-                match self.variance:
-                    case Variance.Covariant if f.tgt == g.src:
-                        F_f = mor_map(f)
-                        F_g = mor_map(g)
-                        F_f_g = mor_map(f >> g)
-                        assert (F_f >> F_g) == F_f_g, f'covariant composition law violated:\n  (({F_f}) >> ({F_g})) == {F_f >> F_g} != {F_f_g}'
-                    case Variance.Contravariant if f.tgt == g.src:
-                        F_f = mor_map(f)
-                        F_g = mor_map(g)
-                        F_f_g = mor_map(f >> g)
-                        assert (F_g >> F_f) == F_f_g, f'contravariant composition law violated:\n  (({F_g}) >> ({F_f})) == {F_g >> F_f} != {F_f_g}'
+                if f.tgt != g.src:
+                    continue
+                F_f = mor_map(f)
+                F_g = mor_map(g)
+                F_f_g = mor_map(f >> g)
+                assert (F_f >> F_g) == F_f_g, f'composition law violated:\n  (({F_f}) >> ({F_g})) == {F_f >> F_g} != {F_f_g}'
 
         # TODO: Do we still need this if we're checking the laws above?  We're
         # calling obj_map and mor_map on all of the objects, it looks like.

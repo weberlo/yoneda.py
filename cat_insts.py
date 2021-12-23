@@ -1,5 +1,5 @@
 from category import *
-from util import *
+from cat_util import *
 
 def build_Zn(n: int) -> Category[None, int]:
     X = Object('X', None)
