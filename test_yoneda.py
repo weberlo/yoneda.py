@@ -32,7 +32,7 @@ def test_nontriv_comp():
     g = C.find_mor_by_name('g')
 
     Set = SetCat()
-    PshC = PshCat[None, None](Set)
+    PshC = PshCat[None, None](C, Set)
     H = build_yoneda_embed(C, PshC)
 
     H_X = H.obj_map(X)

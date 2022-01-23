@@ -1,7 +1,7 @@
 from category import *
 from cat_util import *
 
-def build_Zn(n: int) -> Category[None, int]:
+def build_Zn(n: int) -> FinCat[None, int]:
     X = Object('X', None)
 
     mors = [Morphism(X, str(i), i, X) for i in range(n)]
@@ -11,11 +11,11 @@ def build_Zn(n: int) -> Category[None, int]:
         for b in mors:
             comp_dict[(a, b)] = mors[(a.data + b.data) % n]
 
-    return Category({X}, set(mors), dict_as_comp_rule(comp_dict))
+    return FinCat({X}, set(mors), dict_as_comp_rule(comp_dict))
 
 
 # TODO generalize to Dn
-def build_D3() -> Category[None, None]:
+def build_D3() -> FinCat[None, None]:
     n = 3
 
     X = Object('X', None)
@@ -41,10 +41,10 @@ def build_D3() -> Category[None, None]:
     def comp_rule(f: Morphism[None, None], g: Morphism[None, None]) -> Morphism[None, None]:
         return comp_dict[(f, g)]
 
-    return Category({X}, set(mors), comp_rule)
+    return FinCat({X}, set(mors), comp_rule)
 
 
-def build_walking_arrow() -> Category[None, None]:
+def build_walking_arrow() -> FinCat[None, None]:
     [one, two] = [Object('1', None), Object('2', None)]
 
     [id_1, f, id_2] = [
@@ -60,11 +60,11 @@ def build_walking_arrow() -> Category[None, None]:
         (id_2, id_2): id_2,
     }
 
-    return Category({one, two}, {id_1, f, id_2}, dict_as_comp_rule(comp_dict))
+    return FinCat({one, two}, {id_1, f, id_2}, dict_as_comp_rule(comp_dict))
 
 
 # TODO write function to build categories from sketches
-def build_nontriv_comp() -> Category[None, None]:
+def build_nontriv_comp() -> FinCat[None, None]:
     [X, Y, Z] = [
         Object('X', None),
         Object('Y', None),
@@ -93,7 +93,7 @@ def build_nontriv_comp() -> Category[None, None]:
         (f_g, id_Z): f_g,
     }
 
-    return Category(
+    return FinCat(
         {X, Y, Z},
         {id_X, id_Y, id_Z, f, g, f_g},
         dict_as_comp_rule(comp_dict))

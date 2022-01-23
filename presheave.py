@@ -11,20 +11,23 @@ PshMor = Morphism[Psh[CO, CM], PshNatTrans[CO, CM]]
 SetMor = Morphism[set[Any], Fn]
 
 class PshCat(Category[Psh[CO, CM], PshNatTrans[CO, CM]]):
-    local_graph_to_mor: \
+    _local_graph_to_mor: \
         dict[tuple[PshObj[CO, CM], PshObj[CO, CM]],
              dict[frozenset[tuple[Object[CO], SetMor]], PshMor[CO, CM]]]
+    base_cat: Category[CO, CM]
     set_cat: SetCat
 
-    def __init__(self, set_cat: SetCat):
+    def __init__(self, C: Category[CO, CM], set_cat: SetCat):
+        self._sym = Symbol(f'[{C} ⟶ {set_cat}]')
         self._objs = set()
         self._mors = set()
         self._hom = {}
         self._idents = {}
-        self.local_graph_to_mor = {}
+        self._local_graph_to_mor = {}
+        self.base_cat = C
         self.set_cat = set_cat
 
-    def _comp_rule(self, f: PshMor[CO, CM], g: PshMor[CO, CM]) -> PshMor[CO, CM]:
+    def compose(self, f: PshMor[CO, CM], g: PshMor[CO, CM]) -> PshMor[CO, CM]:
         eta1 = f.data
         eta2 = g.data
         def eta(X: Object[CO]) -> SetMor:
@@ -69,16 +72,16 @@ class PshCat(Category[Psh[CO, CM], PshNatTrans[CO, CM]]):
         domain = list(C.objs)
         image = [nat_trans(X) for X in domain]
         graph = frozenset(zip(domain, image))
-        if (src, tgt) in self.local_graph_to_mor and graph in self.local_graph_to_mor[(src, tgt)]:
+        if (src, tgt) in self._local_graph_to_mor and graph in self._local_graph_to_mor[(src, tgt)]:
             # If we've already encountered the graph for this type signature,
             # return the previously encountered morphism.
-            return self.local_graph_to_mor[(src, tgt)][graph]
+            return self._local_graph_to_mor[(src, tgt)][graph]
         # Otherwise, this is a new morphism.
         assert name is not None, 'new morphism needs name'
         mor: PshMor[CO, CM] = Morphism(src, name, nat_trans, tgt, cat=self)
         self.mors.add(mor)
         self._hom.setdefault((src, tgt), set()).add(mor)
-        self.local_graph_to_mor.setdefault((src, tgt), {})[graph] = mor
+        self._local_graph_to_mor.setdefault((src, tgt), {})[graph] = mor
         # TODO this could be a method in `Category`
         def is_ident(f: SetMor) -> bool:
             return f.src == f.tgt and self.set_cat.idents[f.src] == f
