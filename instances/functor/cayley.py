@@ -1,6 +1,6 @@
 from category import *
 from functor import *
-from cat_insts import *
+from instances import *
 
 def build_cayley_functor(G: Category[O, M], SC: SetCat) -> Functor[O, M, set[Any], Fn]:
     [X] = G.objs
@@ -16,5 +16,5 @@ def build_cayley_functor(G: Category[O, M], SC: SetCat) -> Functor[O, M, set[Any
         F_src = obj_map(f.src)
         F_tgt = obj_map(f.tgt)
         return SC.find_mor_by_fn(F_src, data, F_tgt, name=name)
-    return Functor(G, SC, obj_map, mor_map, Variance.Covariant)
+    return Functor(G, SC, obj_map, mor_map)
 

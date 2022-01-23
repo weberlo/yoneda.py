@@ -1,6 +1,6 @@
 from category import *
 from functor import *
-from hom_functor import *
+from instances.functor.hom_functor import *
 from nat_trans import *
 from presheave import *
 

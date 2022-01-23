@@ -1,6 +1,6 @@
 from category import *
 from functor import *
-from cayley import *
+from instances.functor.cayley import *
 
 
 def test_Z5():

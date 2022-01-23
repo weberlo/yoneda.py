@@ -1,5 +1,5 @@
-from hom_functor import *
-from cat_insts import *
+from instances.functor.hom_functor import *
+from instances import *
 
 WA = build_walking_arrow()
 one = WA.find_obj_by_name('1')

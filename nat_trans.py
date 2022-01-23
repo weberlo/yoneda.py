@@ -1,5 +1,4 @@
 from category import *
-from debug import DebugBlock
 from functor import *
 
 class NatTrans(Generic[CO, CM, DO, DM]):

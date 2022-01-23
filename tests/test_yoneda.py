@@ -1,6 +1,6 @@
-from hom_functor import *
-from cat_insts import *
-from yoneda import *
+from instances.functor.hom_functor import *
+from instances import *
+from instances.functor.yoneda import *
 from presheave import *
 
 def test_walking_arrow():

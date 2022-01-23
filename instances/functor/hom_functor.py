@@ -1,6 +1,6 @@
 from category import *
 from functor import *
-from cat_insts import *
+from instances import *
 
 def build_covariant_hom_functor(
         C: Category[O, M],

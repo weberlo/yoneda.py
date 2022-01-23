@@ -1,8 +1,8 @@
 from typing import Callable, Generic, TypeVar, Any
 import itertools
 
-from symbol import *
-from util import BiDict
+from util.symbol import *
+from util.collections import BiDict
 
 O = TypeVar('O')
 M = TypeVar('M')

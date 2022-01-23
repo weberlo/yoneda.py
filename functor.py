@@ -1,7 +1,7 @@
 from enum import Enum
 
 from category import *
-from util import *
+from util.collections import *
 
 class Variance(Enum):
     Covariant = 0
