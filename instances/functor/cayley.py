@@ -1,6 +1,7 @@
 from category import *
 from functor import *
 from instances import *
+from instances.category.set_cat import *
 
 def build_cayley_functor(G: Category[O, M], SC: SetCat) -> Functor[O, M, set[Any], Fn]:
     [X] = G.objs

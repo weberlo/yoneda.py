@@ -1,6 +1,7 @@
 from category import *
 from functor import *
 from nat_trans import *
+from instances.category.set_cat import *
 
 # TODO We should be able to refactor the commonalities in Set and PshCat
 Fn = Callable[[Any], Any]
