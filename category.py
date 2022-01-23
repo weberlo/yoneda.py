@@ -94,6 +94,9 @@ class Category(Generic[O, M]):
     def find_mor_by_name(self, name: str):
         return self.find_mor(lambda f: f.sym.name == name)
 
+    def find_mor_by_data(self, src: Object[O], data: M, tgt: Object[O]):
+        return self.find_mor(lambda f: f.src == src and f.data == data and f.tgt == tgt)
+
     def find_mor(self, pred: Callable[[Morphism[O, M]], bool]) -> Morphism[O, M]:
         res = None
         for f in self.mors:
