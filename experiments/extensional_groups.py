@@ -11,7 +11,11 @@ table = {
     (e, e): e
 }
 
-
+# TODO: We can automate this bootstrapping process so that the user gives a
+# table with string pairs that map to strings, then we replace each string with
+# a function following the form of `a`.  Then, when we have the symbol
+# environment business implemented, we can register those string names to the
+# returned lambdas.
 def a(x):
     x_base = find_base(x, elts)
     return table[(a, x_base)]
